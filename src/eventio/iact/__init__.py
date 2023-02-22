@@ -29,26 +29,26 @@ log = logging.getLogger(__name__)
 
 
 __all__ = [
-    'IACTFile',
-    'RunHeader',
-    'TelescopeDefinition',
-    'EventHeader',
-    'ArrayOffsets',
-    'TelescopeData',
-    'Photons',
-    'CameraLayout',
-    'TriggerTime',
-    'PhotoElectrons',
-    'EventEnd',
-    'RunEnd',
-    'Longitudinal',
-    'InputCard',
-    'AtmosphericProfile',
+    "IACTFile",
+    "RunHeader",
+    "TelescopeDefinition",
+    "EventHeader",
+    "ArrayOffsets",
+    "TelescopeData",
+    "Photons",
+    "CameraLayout",
+    "TriggerTime",
+    "PhotoElectrons",
+    "EventEnd",
+    "RunEnd",
+    "Longitudinal",
+    "InputCard",
+    "AtmosphericProfile",
 ]
 
 
 class IACTFile(EventIOFile):
-    '''
+    """
     An Interface to access the data of a EventIO file
     as produced by the CORSIKA IACT (a.k.a. bernlohr) extension
     more easily.
@@ -80,7 +80,7 @@ class IACTFile(EventIOFile):
       EventEnd
 
     RunEnd
-    '''
+    """
 
     def __init__(self, path, zcat=True):
         super().__init__(path, zcat=zcat)
@@ -107,21 +107,16 @@ class IACTFile(EventIOFile):
         self._first_event_byte = self.tell()
 
     def __repr__(self):
-        return (
-            '{}(\n'
-            '  path={}\n'
-            '  n_telescopes={}\n'
-            ')'
-        ).format(
+        return ("{}(\n" "  path={}\n" "  n_telescopes={}\n" ")").format(
             self.__class__.__name__,
             self.path,
             self.n_telescopes,
         )
 
     def __iter__(self):
-        '''
+        """
         Generator over the single array events
-        '''
+        """
         self._next_header_pos = self._first_event_byte
         obj = next(self)
 
@@ -146,7 +141,12 @@ class IACTFile(EventIOFile):
 
                 if isinstance(obj, Photons):
                     if obj.array_id != 999 or obj.telescope_id != 999:
-                        raise ValueError('Unexpected Photon Block')
+                        # print("array_id: ",obj.array_id)
+                        # print("telescope_id: ",obj.telescope_id)
+                        # raise ValueError('Unexpected Photon Block')
+                        while not isinstance(obj, EventEnd):
+                            obj = next(self)
+                        break
 
                     particles = obj.parse()
 
@@ -154,7 +154,13 @@ class IACTFile(EventIOFile):
 
             for reuse in range(n_reuses):
 
-                check_type(obj, TelescopeData)
+                # Skip one if for whatever reason the type does not work
+                try:
+                    check_type(obj, TelescopeData)
+                except:
+                    while not isinstance(obj, EventEnd):
+                        obj = next(self)
+                    break
                 telescope_data_obj = obj
 
                 photon_bunches = {}
@@ -170,7 +176,7 @@ class IACTFile(EventIOFile):
                         n_bunches[data.telescope] = data.n_bunches
 
                 if len(array_offsets.dtype) == 3:
-                    weight = array_offsets[reuse]['weight']
+                    weight = array_offsets[reuse]["weight"]
                 else:
                     weight = 1.0
 
@@ -178,10 +184,10 @@ class IACTFile(EventIOFile):
                     header=header,
                     photon_bunches=photon_bunches,
                     time_offset=time_offset,
-                    impact_x=-array_offsets[reuse]['x'],
-                    impact_y=-array_offsets[reuse]['y'],
+                    impact_x=-array_offsets[reuse]["x"],
+                    impact_y=-array_offsets[reuse]["y"],
                     reuse_weight=weight,
-                    event_number=header['event_number'],
+                    event_number=header["event_number"],
                     reuse=reuse + 1,
                     n_photons=n_photons,
                     n_bunches=n_bunches,
@@ -200,21 +206,27 @@ class IACTFile(EventIOFile):
 
 
 EventTuple = namedtuple(
-    'EventTuple',
+    "EventTuple",
     [
-        'header', 'photon_bunches',
-        'time_offset', 'impact_x', 'impact_y',
-        'reuse_weight',
-        'event_number', 'reuse',
-        'n_photons', 'n_bunches',
-        'longitudinal', 'particles',
-        'emitter',
-    ]
+        "header",
+        "photon_bunches",
+        "time_offset",
+        "impact_x",
+        "impact_y",
+        "reuse_weight",
+        "event_number",
+        "reuse",
+        "n_photons",
+        "n_bunches",
+        "longitudinal",
+        "particles",
+        "emitter",
+    ],
 )
 
 
 class Event(EventTuple):
-    '''
+    """
     A single event as simulated by corsika
 
     Members:
@@ -256,9 +268,10 @@ class Event(EventTuple):
       weight:
         weight for this offset position.
         Only different from 1 if importance sampling was used.
-    '''
+    """
+
     def __repr__(self):
-        return '{}(event_number={}, reuse={}, n_telescopes={}, n_photons={})'.format(
+        return "{}(event_number={}, reuse={}, n_telescopes={}, n_photons={})".format(
             self.__class__.__name__,
             self.event_number,
             self.reuse,
